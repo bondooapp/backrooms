@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type RedisConfig struct {
+type RedisParam struct {
 	Host     string
 	Port     string
 	Password string
@@ -19,23 +19,23 @@ type RedisConfig struct {
 	PoolSize string
 }
 
-type RedisComponent struct {
+type RedisClient struct {
 	Client *redis.Client
 }
 
-func LoadRedisConfig() (*RedisConfig, error) {
+func LoadRedisParam() (*RedisParam, error) {
 	_ = godotenv.Load()
-	cfg := &RedisConfig{
+	param := &RedisParam{
 		Host:     util.GetEnv("REDIS_HOST", "localhost"),
 		Port:     util.GetEnv("REDIS_PORT", "6379"),
 		Password: util.GetEnv("REDIS_PASSWORD", ""),
 		DB:       util.GetEnv("REDIS_DB", "0"),
 		PoolSize: util.GetEnv("REDIS_POOL_SIZE", "100"),
 	}
-	return cfg, nil
+	return param, nil
 }
 
-func NewRedisComponent(cfg *RedisConfig) (*RedisComponent, error) {
+func NewRedisClient(cfg *RedisParam) (*RedisClient, error) {
 	db, _ := strconv.Atoi(cfg.DB)
 	poolSize, _ := strconv.Atoi(cfg.PoolSize)
 	rdb := redis.NewClient(&redis.Options{
@@ -50,13 +50,13 @@ func NewRedisComponent(cfg *RedisConfig) (*RedisComponent, error) {
 
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
-		xlog.Fatal(context.Background(), err, "failed to connect redis")
+		xlog.Fatal(context.Background(), err, "connection to redis failed")
 		return nil, err
 	}
 
-	return &RedisComponent{Client: rdb}, nil
+	return &RedisClient{Client: rdb}, nil
 }
 
-func (r *RedisComponent) Close() error {
+func (r *RedisClient) Close() error {
 	return r.Client.Close()
 }

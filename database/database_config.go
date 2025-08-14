@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type PostgresConfig struct {
+type PostgresParam struct {
 	Host     string
 	Port     string
 	User     string
@@ -19,13 +19,13 @@ type PostgresConfig struct {
 	SSLMode  string
 }
 
-type PostgresComponent struct {
+type PostgresClient struct {
 	Client *gorm.DB
 }
 
-func LoadPostgresConfig() (*PostgresConfig, error) {
+func LoadPostgresParam() (*PostgresParam, error) {
 	_ = godotenv.Load()
-	cfg := &PostgresConfig{
+	param := &PostgresParam{
 		Host:     util.GetEnv("POSTGRES_HOST", "localhost"),
 		Port:     util.GetEnv("POSTGRES_PORT", "5432"),
 		User:     util.GetEnv("POSTGRES_USER", "root"),
@@ -33,10 +33,10 @@ func LoadPostgresConfig() (*PostgresConfig, error) {
 		DBName:   util.GetEnv("POSTGRES_DB_NAME", "postgres"),
 		SSLMode:  util.GetEnv("POSTGRES_SSL_MODE", "disable"),
 	}
-	return cfg, nil
+	return param, nil
 }
 
-func NewPostgresComponent(cfg *PostgresConfig) (*PostgresComponent, error) {
+func NewPostgresClient(cfg *PostgresParam) (*PostgresClient, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		cfg.Host,
 		cfg.User,
@@ -47,8 +47,8 @@ func NewPostgresComponent(cfg *PostgresConfig) (*PostgresComponent, error) {
 	)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		xlog.Fatal(context.Background(), err, "failed to connect postgres")
+		xlog.Fatal(context.Background(), err, "connection to postgres failed")
 		return nil, err
 	}
-	return &PostgresComponent{Client: db}, nil
+	return &PostgresClient{Client: db}, nil
 }
