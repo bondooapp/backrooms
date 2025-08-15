@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+// RedisParam
+//
+// Redis param.
 type RedisParam struct {
 	Host     string
 	Port     string
@@ -19,10 +22,16 @@ type RedisParam struct {
 	PoolSize string
 }
 
+// RedisClient
+//
+// Redis client.
 type RedisClient struct {
 	Client *redis.Client
 }
 
+// LoadRedisParam
+//
+// Load redis param.
 func LoadRedisParam() (*RedisParam, error) {
 	_ = godotenv.Load()
 	param := &RedisParam{
@@ -35,12 +44,15 @@ func LoadRedisParam() (*RedisParam, error) {
 	return param, nil
 }
 
-func NewRedisClient(cfg *RedisParam) (*RedisClient, error) {
-	db, _ := strconv.Atoi(cfg.DB)
-	poolSize, _ := strconv.Atoi(cfg.PoolSize)
+// NewRedisClient
+//
+// New redis client.
+func NewRedisClient(rp *RedisParam) (*RedisClient, error) {
+	db, _ := strconv.Atoi(rp.DB)
+	poolSize, _ := strconv.Atoi(rp.PoolSize)
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
-		Password: cfg.Password,
+		Addr:     fmt.Sprintf("%s:%s", rp.Host, rp.Port),
+		Password: rp.Password,
 		DB:       db,
 		PoolSize: poolSize,
 	})
@@ -50,13 +62,16 @@ func NewRedisClient(cfg *RedisParam) (*RedisClient, error) {
 
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
-		xlog.Fatal(context.Background(), err, "connection to redis failed")
+		xlog.Fatal(context.Background(), err, "backrooms: failed to connect redis")
 		return nil, err
 	}
 
 	return &RedisClient{Client: rdb}, nil
 }
 
-func (r *RedisClient) Close() error {
-	return r.Client.Close()
+// Close
+//
+// Redis close client.
+func (rc *RedisClient) Close() error {
+	return rc.Client.Close()
 }
