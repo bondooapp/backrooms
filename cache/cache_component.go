@@ -9,8 +9,11 @@ import (
 	"time"
 )
 
-func (r *RedisClient) Get(ctx context.Context, key string, target interface{}) error {
-	val, err := r.Client.Get(ctx, key).Result()
+// Get
+//
+// Redis gets value by key.
+func (rc *RedisClient) Get(ctx context.Context, key string, target interface{}) error {
+	val, err := rc.Client.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil
@@ -28,7 +31,10 @@ func (r *RedisClient) Get(ctx context.Context, key string, target interface{}) e
 	return nil
 }
 
-func (r *RedisClient) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+// Set
+//
+// Redis sets value by key-value and ttl.
+func (rc *RedisClient) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	var data []byte
 	switch v := value.(type) {
 	case string:
@@ -41,11 +47,14 @@ func (r *RedisClient) Set(ctx context.Context, key string, value interface{}, tt
 		}
 	}
 
-	return r.Client.Set(ctx, key, data, ttl).Err()
+	return rc.Client.Set(ctx, key, data, ttl).Err()
 }
 
-func (r *RedisClient) Delete(ctx context.Context, key string) error {
-	_, err := r.Client.Del(ctx, key).Result()
+// Delete
+//
+// Redis delete value by key.
+func (rc *RedisClient) Delete(ctx context.Context, key string) error {
+	_, err := rc.Client.Del(ctx, key).Result()
 	if err != nil {
 		return fmt.Errorf("backrooms: delete key in redis failed: %w", err)
 	}

@@ -10,6 +10,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// PostgresParam
+//
+// Postgres param.
 type PostgresParam struct {
 	Host     string
 	Port     string
@@ -19,10 +22,16 @@ type PostgresParam struct {
 	SSLMode  string
 }
 
+// PostgresClient
+//
+// Postgres client.
 type PostgresClient struct {
 	Client *gorm.DB
 }
 
+// LoadPostgresParam
+//
+// Load postgres param.
 func LoadPostgresParam() (*PostgresParam, error) {
 	_ = godotenv.Load()
 	param := &PostgresParam{
@@ -36,18 +45,21 @@ func LoadPostgresParam() (*PostgresParam, error) {
 	return param, nil
 }
 
-func NewPostgresClient(cfg *PostgresParam) (*PostgresClient, error) {
+// NewPostgresClient
+//
+// New postgres client.
+func NewPostgresClient(pp *PostgresParam) (*PostgresClient, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-		cfg.Host,
-		cfg.User,
-		cfg.Password,
-		cfg.DBName,
-		cfg.Port,
-		cfg.SSLMode,
+		pp.Host,
+		pp.User,
+		pp.Password,
+		pp.DBName,
+		pp.Port,
+		pp.SSLMode,
 	)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		xlog.Fatal(context.Background(), err, "connection to postgres failed")
+		xlog.Fatal(context.Background(), err, "backrooms: failed to connect postgres")
 		return nil, err
 	}
 	return &PostgresClient{Client: db}, nil
