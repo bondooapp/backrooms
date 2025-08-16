@@ -3,12 +3,13 @@ package cache
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/bondooapp/backrooms/util"
 	"github.com/bondooapp/backrooms/util/xlog"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
-	"strconv"
-	"time"
 )
 
 // RedisParam
@@ -47,9 +48,22 @@ func LoadRedisParam() (*RedisParam, error) {
 // NewRedisClient
 //
 // New redis client.
-func NewRedisClient(rp *RedisParam) (*RedisClient, error) {
-	db, _ := strconv.Atoi(rp.DB)
-	poolSize, _ := strconv.Atoi(rp.PoolSize)
+func NewRedisClient(ctx context.Context, rp *RedisParam) (*RedisClient, error) {
+	// Get redis db index.
+	db, err := strconv.Atoi(rp.DB)
+	if err != nil {
+		xlog.Fatal(ctx, err, "backrooms: failed to get redis db index")
+		return nil, err
+	}
+
+	// get redis pool size.
+	poolSize, err := strconv.Atoi(rp.PoolSize)
+	if err != nil {
+		xlog.Fatal(ctx, err, "backrooms: failed to get redis pool size")
+		return nil, err
+	}
+
+	// Create new redis client.
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%s", rp.Host, rp.Port),
 		Password: rp.Password,
@@ -57,21 +71,16 @@ func NewRedisClient(rp *RedisParam) (*RedisClient, error) {
 		PoolSize: poolSize,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Set redis connection timeout.
+	connCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := rdb.Ping(ctx).Result()
-	if err != nil {
-		xlog.Fatal(context.Background(), err, "backrooms: failed to connect redis")
+	// Test connection.
+	if _, err := rdb.Ping(connCtx).Result(); err != nil {
+		_ = rdb.Close()
+		xlog.Fatal(ctx, err, "backrooms: failed to connect redis")
 		return nil, err
 	}
 
 	return &RedisClient{Client: rdb}, nil
-}
-
-// Close
-//
-// Redis close client.
-func (rc *RedisClient) Close() error {
-	return rc.Client.Close()
 }

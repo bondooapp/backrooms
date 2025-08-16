@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/bondooapp/backrooms/util"
 	"github.com/bondooapp/backrooms/util/xlog"
 	"github.com/joho/godotenv"
@@ -48,7 +50,12 @@ func LoadPostgresParam() (*PostgresParam, error) {
 // NewPostgresClient
 //
 // New postgres client.
-func NewPostgresClient(pp *PostgresParam) (*PostgresClient, error) {
+func NewPostgresClient(ctx context.Context, pp *PostgresParam) (*PostgresClient, error) {
+	// Set postgres connection timeout.
+	connCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// Get postgres dsn.
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		pp.Host,
 		pp.User,
@@ -57,10 +64,29 @@ func NewPostgresClient(pp *PostgresParam) (*PostgresClient, error) {
 		pp.Port,
 		pp.SSLMode,
 	)
+
+	// Configure gorm.
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		xlog.Fatal(context.Background(), err, "backrooms: failed to connect postgres")
+		xlog.Fatal(ctx, err, "backrooms: failed to open postgres dsn")
 		return nil, err
 	}
+
+	// Configure connection pool by gorm.
+	sqlDB, err := db.DB()
+	if err != nil {
+		xlog.Fatal(ctx, err, "backrooms: failed to get sql DB")
+		return nil, err
+	}
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+
+	// Test connection.
+	if err := db.WithContext(connCtx).Raw("SELECT 1").Error; err != nil {
+		xlog.Error(ctx, err, "backrooms: failed to test postgres connection")
+		return nil, err
+	}
+
 	return &PostgresClient{Client: db}, nil
 }
