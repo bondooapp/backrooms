@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/bondooapp/backrooms/util"
@@ -16,12 +17,15 @@ import (
 //
 // Postgres param.
 type PostgresParam struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	DBName   string
-	SSLMode  string
+	Host            string
+	Port            string
+	User            string
+	Password        string
+	DBName          string
+	SSLMode         string
+	MaxOpenConns    string
+	MaxIdleConns    string
+	ConnMaxLifetime string
 }
 
 // PostgresClient
@@ -37,12 +41,15 @@ type PostgresClient struct {
 func LoadPostgresParam() (*PostgresParam, error) {
 	_ = godotenv.Load()
 	param := &PostgresParam{
-		Host:     util.GetEnv("POSTGRES_HOST", "localhost"),
-		Port:     util.GetEnv("POSTGRES_PORT", "5432"),
-		User:     util.GetEnv("POSTGRES_USER", "root"),
-		Password: util.GetEnv("POSTGRES_PASSWORD", "password"),
-		DBName:   util.GetEnv("POSTGRES_DB_NAME", "postgres"),
-		SSLMode:  util.GetEnv("POSTGRES_SSL_MODE", "disable"),
+		Host:            util.GetEnv("POSTGRES_HOST", "localhost"),
+		Port:            util.GetEnv("POSTGRES_PORT", "5432"),
+		User:            util.GetEnv("POSTGRES_USER", "root"),
+		Password:        util.GetEnv("POSTGRES_PASSWORD", "password"),
+		DBName:          util.GetEnv("POSTGRES_DB_NAME", "postgres"),
+		SSLMode:         util.GetEnv("POSTGRES_SSL_MODE", "disable"),
+		MaxOpenConns:    util.GetEnv("POSTGRES_MAX_OPEN_CONNS", "20"),
+		MaxIdleConns:    util.GetEnv("POSTGRES_MAX_IDLE_CONNS", "5"),
+		ConnMaxLifetime: util.GetEnv("POSTGRES_CONN_MAX_LIFETIME", "60"),
 	}
 	return param, nil
 }
@@ -75,12 +82,27 @@ func NewPostgresClient(ctx context.Context, pp *PostgresParam) (*PostgresClient,
 	// Configure connection pool by gorm.
 	sqlDB, err := db.DB()
 	if err != nil {
-		xlog.Fatal(ctx, err, "backrooms: failed to get sql DB")
+		xlog.Fatal(ctx, err, "backrooms: failed to get postgres sql DB")
 		return nil, err
 	}
-	sqlDB.SetMaxOpenConns(25)
-	sqlDB.SetMaxIdleConns(5)
-	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+	maxOpenConns, err := strconv.Atoi(pp.MaxOpenConns)
+	if err != nil {
+		xlog.Fatal(ctx, err, "backrooms: failed to get postgres maxOpenConns param")
+		return nil, err
+	}
+	maxIdleConns, err := strconv.Atoi(pp.MaxIdleConns)
+	if err != nil {
+		xlog.Fatal(ctx, err, "backrooms: failed to get postgres maxIdleConns param")
+		return nil, err
+	}
+	connMaxLifetime, err := strconv.Atoi(pp.ConnMaxLifetime)
+	if err != nil {
+		xlog.Fatal(ctx, err, "backrooms: failed to get postgres connMaxLifetime param")
+		return nil, err
+	}
+	sqlDB.SetMaxOpenConns(maxOpenConns)
+	sqlDB.SetMaxIdleConns(maxIdleConns)
+	sqlDB.SetConnMaxLifetime(time.Duration(connMaxLifetime) * time.Minute)
 
 	// Test connection.
 	if err := db.WithContext(connCtx).Raw("SELECT 1").Error; err != nil {
