@@ -3,6 +3,8 @@ package entity
 import (
 	"net/http"
 
+	"github.com/bondooapp/backrooms/enum/redirect"
+	"github.com/bondooapp/backrooms/enum/show"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,13 +15,13 @@ type Result struct {
 	HttpStatus   int         `json:"httpStatus"`
 	Success      bool        `json:"success"`
 	Message      string      `json:"message"`
-	RedirectType string      `json:"redirectType"`
-	ShowType     string      `json:"showType"`
+	RedirectType string      `json:"redirectType,omitempty"`
+	ShowType     string      `json:"showType,omitempty"`
 	TraceID      string      `json:"traceId"`
-	Data         interface{} `json:"data"`
+	Data         interface{} `json:"data,omitempty"`
 }
 
-// page
+// Page
 //
 // pagination param of response.
 type page struct {
@@ -74,19 +76,19 @@ func DeleteOK(c *gin.Context) {
 // Error
 //
 // Generate error result of response.
-func Error(c *gin.Context, httpStatus int, message string) (result Result) {
+func Error(c *gin.Context, httpStatus int, message string, showType show.Type, redirectType redirect.Type) (result Result) {
 	return Result{
 		HttpStatus:   httpStatus,
 		Success:      false,
 		Message:      message,
-		RedirectType: "",
-		ShowType:     "",
+		RedirectType: redirectType.String(),
+		ShowType:     showType.String(),
 		TraceID:      getTraceId(c),
 		Data:         nil,
 	}
 }
 
-// ok
+// OK
 //
 // Generate ok result of response.
 func ok(c *gin.Context, httpStatus int, message string, data interface{}) {
@@ -101,7 +103,7 @@ func ok(c *gin.Context, httpStatus int, message string, data interface{}) {
 	})
 }
 
-// getTraceId
+// GetTraceId
 //
 // Get traceId from context.
 func getTraceId(c *gin.Context) string {
